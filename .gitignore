@@ -1,0 +1,9 @@
+# cad files
+*.obj
+*.mtl
+
+# environement
+.env
+
+# pycache
+*.pyc 
