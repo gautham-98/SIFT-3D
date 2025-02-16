@@ -13,7 +13,7 @@ class Profiler:
             result = func(*args, **kwargs)
             end = time.perf_counter()
             _class_name = type(args[0]).__name__ if args else "Unknown"
-            _func_name = func.__name__+f" || {_class_name}"
+            _func_name = func.__name__+f" || Class : {_class_name}"
             _time = end-start
             self._update_stats(_func_name, _time)
             return result
