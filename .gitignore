@@ -5,5 +5,8 @@
 # environement
 .env
 
+# log files
+.log
+
 # pycache
 *.pyc 
