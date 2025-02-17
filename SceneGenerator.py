@@ -23,6 +23,7 @@ class IcosphereSceneGenerator:
 
         @staticmethod
         @profiler.time_it 
+        @jit(nopython=True)
         def get_camera_transformation(position:np.ndarray, target=np.array([0,0,0])):
             direction_vec = target - position
             z = direction_vec/np.linalg.norm(direction_vec)
@@ -79,7 +80,7 @@ class IcosphereSceneGenerator:
         
         @profiler.time_it
         def _get_pixels_rays_triangles(self):
-            _origins, _directions, pixels = self.camera_rays 
+            _origins, _directions, pixels = self.camera_rays
             _tri_indices =  self.mesh.ray.intersects_first(_origins, _directions)
 
             # remove the -1 from the triangle indices
@@ -98,56 +99,13 @@ class IcosphereSceneGenerator:
             # # debug
 
             return pixels, origins, directions, mesh_triangles
-            
+          
         @property
         def camera_rays(self): return self.scene.camera_rays()
-
-        # @staticmethod
-        # @profiler.time_it
-        # @jit(nopython=True, parallel=True)
-        # def _get_tri_ray_intersection(origins, directions, triangles):
-        #     """
-        #     Möller–Trumbore ray-triangle intersection algorithm for fast intersection testing. 
-        #     """
-        #     # Extract triangle vertices
-        #     v0, v1, v2 = triangles[:,0,:], triangles[:,1,:], triangles[:,2,:]
-        #     e1 = v1 - v0
-        #     e2 = v2 - v0
-
-        #     # Initialize arrays for the result
-        #     intersection_points = np.full(origins.shape, np.nan)  # Default to NaN
-            
-        #     # Loop over rays in parallel using prange
-        #     for i in prange(origins.shape[0]):
-        #         # Calculate the cross products and other coefficients for ray-triangle intersection
-        #         h = np.cross(directions[i], e2[i])
-        #         a = np.dot(e1[i], h)
-                
-        #         # Avoid division by zero
-        #         if a == 0.0:
-        #             continue
-                
-        #         f = 1.0 / a
-
-        #         # Calculate barycentric coordinates
-        #         s = origins[i] - v0[i]
-        #         u = f * np.dot(s, h)
-        #         q = np.cross(s, e1[i])
-        #         v = f * np.dot(directions[i], q)
-
-        #         # Calculate intersection distance
-        #         t = f * np.dot(e2[i], q)
-
-        #         # Valid intersections: 0 <= u <= 1, 0 <= v <= 1, u + v <= 1, t >= 0
-        #         if (u >= 0) & (u <= 1) & (v >= 0) & (u + v <= 1) & (t >= 0):
-        #             # Store the intersection point
-        #             intersection_points[i] = origins[i] + directions[i] * t
-            
-        #     return intersection_points
                
         @staticmethod
         @profiler.time_it
-        @jit(nopython=True, parallel=False)
+        @jit(nopython=True)
         def _get_tri_ray_intersection(origins, directions, triangles):
             """
             Möller–Trumbore ray-triangle intersection algorithm for fast intersection testing. 
@@ -172,11 +130,13 @@ class IcosphereSceneGenerator:
             
             # Valid intersections: 0 <= u <= 1, 0 <= v <= 1, u + v <= 1
             mask_valid = (u >= 0) & (u <= 1) & (v >= 0) & (u + v <= 1) & (t >= 0)
-
-            # Compute intersection points only for valid rays
-            intersection_points = np.full(origins.shape, np.nan)  # Default to NaN
+            intersection_points = np.full(origins.shape, np.nan) 
+            
+            # compute intersection
+            # for i in prange(origins.shape[0]):
+            #     if mask_valid[i]:  # Only process valid rays
+            #         intersection_points[i] = origins[i] + directions[i] * t[i, None]
             intersection_points[mask_valid] = origins[mask_valid] + directions[mask_valid] * t[mask_valid, None]
-
             return intersection_points
             
     def __init__(self, filepath:str, icosphere_radius:float=0.5, icosphere_subdivisions:float=1.0, resolution:Tuple[int,int]=(480,480), fov:Tuple[float,float]=(45,45)):
